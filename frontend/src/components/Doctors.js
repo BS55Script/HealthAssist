@@ -86,12 +86,14 @@ export default function DoctorDashboard() {
   const [selectedAction, setSelectedAction] = useState('');
   const [existingPrescriptions, setExistingPrescriptions] = useState([]);
   const [appointments, setAppointments] = useState([]);
+   const [recentActivities, setRecentActivities] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchDoctorProfile();
     fetchPatientsWithAppointments();
     fetchAppointments();
+    fetchRecentActivities();
   }, []);
 
   useEffect(() => {
@@ -197,6 +199,20 @@ export default function DoctorDashboard() {
       console.error('Error fetching appointments:', error);
     }
   };
+  const fetchRecentActivities = async () => {
+    const token = localStorage.getItem('token');
+    const response = await fetch('http://localhost:5000/api/doctor/recent-activity', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (response.ok) {
+      const data = await response.json();
+      setRecentActivities(data);
+    } else {
+      console.error('Failed to fetch recent activity');
+    }
+  };
 
   const renderDashboard = () => (
     <>
@@ -293,21 +309,22 @@ export default function DoctorDashboard() {
             <CardTitle>Recent Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-2">
-              <li className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-blue-600" />
-                <span>Completed appointment with John Doe</span>
+        {recentActivities.length === 0 ? (
+          <p className="text-sm text-gray-500">No recent activity available.</p>
+        ) : (
+          <ul className="space-y-2">
+            {recentActivities.map((activity, index) => (
+              <li key={index} className="flex items-center space-x-2">
+                {activity.type === "appointment_with_patient" && <User className="h-4 w-4 text-green-600" />}
+                {activity.type === "prescription_issued" && <FileText className="h-4 w-4 text-purple-600" />}
+                {activity.type === "checkup_completed" && <Stethoscope className="h-4 w-4 text-indigo-600" />}
+                <span>{activity.details}</span>
+                <span className="text-xs text-gray-500 ml-2">{new Date(activity.timestamp).toLocaleString()}</span>
               </li>
-              <li className="flex items-center space-x-2">
-                <FileText className="h-4 w-4 text-blue-600" />
-                <span>Updated medical records for Alice Johnson</span>
-              </li>
-              <li className="flex items-center space-x-2">
-                <User className="h-4 w-4 text-blue-600" />
-                <span>New patient registered: David Lee</span>
-              </li>
-            </ul>
-          </CardContent>
+            ))}
+          </ul>
+        )}
+      </CardContent>
         </Card>
         <Card>
           <CardHeader>

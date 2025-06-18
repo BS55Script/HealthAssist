@@ -245,5 +245,46 @@ router.get('/appointments', auth, async (req, res) => {
     res.status(500).send({ error: 'Server error' });
   }
 });
+router.get('/recent-activity', auth, async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+
+    const recentAppointments = await Appointment.find({ doctorId })
+      .sort({ date: -1, time: -1 })
+      .limit(5)
+      .populate('patientId', 'firstName lastName');
+
+    const recentPrescriptions = await Prescription.find({ doctorId })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate('patientId', 'firstName lastName');
+
+    const activities = [];
+
+    recentAppointments.forEach(app => {
+      activities.push({
+        type: 'appointment_with_patient',
+        details: `Appointment with ${app.patientId.firstName} ${app.patientId.lastName}`,
+        timestamp: new Date(app.date + ' ' + app.time)
+      });
+    });
+
+    recentPrescriptions.forEach(pres => {
+      activities.push({
+        type: 'prescription_issued',
+        details: `Prescription to ${pres.patientId.firstName} ${pres.patientId.lastName}`,
+        timestamp: pres.createdAt
+      });
+    });
+
+    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    res.json(activities);
+  } catch (error) {
+    console.error('Error fetching doctor activity:', error);
+    res.status(500).send({ error: 'Server error' });
+  }
+});
+
 
 module.exports = router;
